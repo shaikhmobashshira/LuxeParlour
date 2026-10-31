@@ -3,6 +3,7 @@ import static com.parlour.management.Db.*;
 import java.util.*;
 import java.time.*;
 import java.sql.Timestamp;
+import java.math.*;
 import org.springframework.web.bind.annotation.*;
 @RestController
 public class Payments {
@@ -25,5 +26,5 @@ public class Payments {
   else {var refundAmt=money(pay.get("amount"));bookings.queueRefund(bid,refundAmt,safe?"Payment arrived after reservation expired":"Gateway risk flag requires review");if("PENDING_PAYMENT".equals(b.get("status")))db.update("UPDATE bookings SET status='EXPIRED' WHERE booking_id=?",bid);bookings.notifyParties(bid,pt[0],pt[1],"REFUND_PENDING","Payment needs review","The appointment was not confirmed. Contact the parlour.");}});
   return map("message","Payment processed. Return to the app.");
  }
- @PostMapping("/api/owner/bookings/{bid}/cash-payment") Map<String,Object> cash(@PathVariable long bid){auth.require("OWNER");db.tx(()->{var b=bookings.locked(bid);if(!Set.of("CONFIRMED","COMPLETED").contains(b.get("status")))throw error(409,"Cannot accept cash for this booking");var due=money(b.get("total_amount")).subtract(bookings.paid(bid));if(due.signum()>0)db.insert("payments",map("booking_id",bid,"transaction_id","CASH-"+bid,"amount",due,"method","CASH","gateway","OFFLINE","status","PAID","paid_at",Timestamp.from(Instant.now())));});return bookings.detail(bid);}
+ @PostMapping("/api/owner/bookings/{bid}/cash-payment") Map<String,Object> cash(@PathVariable long bid){auth.require("OWNER");db.tx(()->{var b=bookings.locked(bid);if(!Set.of("CONFIRMED","COMPLETED").contains(b.get("status")))throw error(409,"Cannot accept cash for this booking");var due=money(b.get("total_amount")).subtract(bookings.paid(bid));if(due.signum()>0){var fee=due.multiply(BigDecimal.valueOf(bookings.platformFeePct())).divide(BigDecimal.valueOf(100),2,RoundingMode.HALF_UP);db.insert("payments",map("booking_id",bid,"transaction_id","CASH-"+bid,"amount",due,"method","CASH","gateway","OFFLINE","status","PAID","paid_at",Timestamp.from(Instant.now()),"created_at",Timestamp.from(Instant.now()),"platform_charge",fee,"owner_amount",due.subtract(fee)));}});return bookings.detail(bid);}
 }

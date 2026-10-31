@@ -10,7 +10,7 @@ import com.google.firebase.messaging.*;
 import org.json.JSONObject;
 import java.util.Map;
 public class PushService extends FirebaseMessagingService {
- @Override public void onNewToken(String token){ApiRepository api=new ApiRepository(this);if(!api.token().isEmpty())api.request("POST","/api/device-token",MainActivity.obj("token",token),null,(a,b)->{});}
+ @Override public void onNewToken(String token){ApiRepository api=new ApiRepository(this);if(!api.token().isEmpty()){try{api.request("POST","/api/device-token",new JSONObject().put("token",token),null,(a,b)->{});}catch(Exception ignored){}}}
  @Override public void onMessageReceived(RemoteMessage message){NotificationManager manager=getSystemService(NotificationManager.class);manager.createNotificationChannel(new NotificationChannel("bookings","Booking updates",NotificationManager.IMPORTANCE_DEFAULT));if(android.os.Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(this,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return;
   // Support both notification payloads and data-only payloads (e.g. {"title":..,"body":..} or {"type":"booking_update",...}).
   var n=message.getNotification();

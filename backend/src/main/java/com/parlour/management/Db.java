@@ -52,7 +52,7 @@ public class Db {
  /** Run work in a Firestore transaction. Reads must precede writes inside. */
  // Pre-allocated ID cache for transactions: all counter reads happen before any
  // writes, satisfying Firestore's "reads before writes" rule.
- static final List<String> ID_TABLES=List.of("users","parlours","parlour_images","services","staff","staff_schedules","holidays","blocked_slots","bookings","booking_items","payments","ratings","cancellation_policies","notifications","admin_actions","business_hours","complaints","categories","banners","refund_requests");
+ static final List<String> ID_TABLES=List.of("users","parlours","parlour_images","services","staff","staff_schedules","holidays","blocked_slots","bookings","booking_items","payments","ratings","cancellation_policies","notifications","admin_actions","business_hours","complaints","categories","banners","refund_requests","completed_services","password_resets","payment_methods","platform_settings");
  final ThreadLocal<Map<String,Long>> idCache=new ThreadLocal<>();
  final ThreadLocal<java.util.Set<String>> idUsed=new ThreadLocal<>();
 
@@ -165,7 +165,9 @@ public class Db {
   Map.entry("complaints",Map.of("status","OPEN")),
   Map.entry("categories",Map.of("status","ACTIVE")),
   Map.entry("banners",Map.of("status","ACTIVE")),
-  Map.entry("refund_requests",Map.of("status","PENDING"))
+  Map.entry("refund_requests",Map.of("status","PENDING")),
+  Map.entry("payment_methods",Map.of("status","ACTIVE")),
+  Map.entry("platform_settings",Map.of("platform_fee_pct",5))
  );
  static final java.util.Set<String> NOW_DEFAULTS=java.util.Set.of("users","bookings","ratings","admin_actions","refund_requests");
  static final String NOW_COL="created_at";
@@ -400,7 +402,14 @@ public class Db {
  int doDelete(String sql,Object... args){
   var m=Pattern.compile("^\\s*DELETE\\s+FROM\\s+(\\w+)\\s+WHERE\\s+(.+?)\\s*$",Pattern.CASE_INSENSITIVE|Pattern.DOTALL).matcher(sql.trim());
   if(!m.matches())throw new IllegalArgumentException("Unsupported DELETE: "+sql);
-  var hits=findMatches(m.group(1),parseWhere(m.group(2),0),args);
+  String table=m.group(1);var where=parseWhere(m.group(2),0);
+  // Fast path: single PK equality needs no read (avoids tx read-after-write).
+  String pk=null;try{pk=primary(table);}catch(IllegalArgumentException e){/* no PK */}
+  if(pk!=null&&where.size()==1&&where.get(0).op().equals("=")&&where.get(0).col().equals(pk)&&where.get(0).argIx()>=0){
+   Object pkVal=args[where.get(0).argIx()];
+   if(pkVal!=null){deleteDoc(firestore.collection(table).document(String.valueOf(((Number)normArg(pkVal)).longValue())));return 1;}
+  }
+  var hits=findMatches(table,where,args);
   for(var h:hits)deleteDoc(h.ref());
   return hits.size();
  }
@@ -591,7 +600,7 @@ public class Db {
  case "booking_items"->"booking_item_id";case "payments"->"payment_id";case "ratings"->"rating_id";
  case "cancellation_policies"->"policy_id";case "notifications"->"notification_id";case "admin_actions"->"action_id";
  case "business_hours"->"hours_id";case "complaints"->"complaint_id";case "categories"->"category_id";
- case "banners"->"banner_id";case "refund_requests"->"refund_id";default->throw new IllegalArgumentException("Unknown generated ID table");};}
+ case "banners"->"banner_id";case "refund_requests"->"refund_id";case "password_resets"->"reset_id";case "completed_services"->"completed_id";case "payment_methods"->"payment_method_id";case "platform_settings"->"setting_id";default->throw new IllegalArgumentException("Unknown generated ID table");};}
  static Map<String,Object> map(Object...args){var m=new LinkedHashMap<String,Object>();for(int i=0;i<args.length;i+=2)m.put((String)args[i],args[i+1]);return m;}
  static long id(Map<String,Object> row,String key){return ((Number)row.get(key)).longValue();}
  static BigDecimal money(Object x){return new BigDecimal(x.toString());}

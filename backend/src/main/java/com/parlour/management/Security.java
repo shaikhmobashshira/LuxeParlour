@@ -29,7 +29,7 @@ public class Security {
   if(secret.getBytes(StandardCharsets.UTF_8).length<32)throw new IllegalArgumentException("JWT_SECRET needs at least 32 bytes");
   var d=NimbusJwtDecoder.withSecretKey(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8),"HmacSHA256")).macAlgorithm(MacAlgorithm.HS256).build();d.setJwtValidator(JwtValidators.createDefaultWithIssuer(ISSUER));return d;
  }
- @Bean SecurityFilterChain chain(HttpSecurity h)throws Exception{return h.cors(c->{}).csrf(c->c.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).authorizeHttpRequests(a->a.requestMatchers("/api/auth/**","/api/public/**","/api/payments/callback","/admin/**","/error").permitAll().anyRequest().authenticated()).oauth2ResourceServer(o->o.jwt(j->{})).addFilterBefore(new Limit(),UsernamePasswordAuthenticationFilter.class).build();}
+ @Bean SecurityFilterChain chain(HttpSecurity h)throws Exception{return h.cors(c->{}).csrf(c->c.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).authorizeHttpRequests(a->a.requestMatchers("/","/api/auth/**","/api/public/**","/api/payments/callback","/admin/**","/forgot-password","/reset-password","/error").permitAll().anyRequest().authenticated()).oauth2ResourceServer(o->o.jwt(j->{})).addFilterBefore(new Limit(),UsernamePasswordAuthenticationFilter.class).build();}
  @Bean CorsConfigurationSource cors(@Value("${app.cors-origins:}")String origins){
   var allowed=Arrays.stream(origins.split(",")).map(String::trim).filter(s->!s.isEmpty()).toList();
   var config=new CorsConfiguration();

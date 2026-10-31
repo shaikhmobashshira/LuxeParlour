@@ -11,3 +11,7 @@ build/
 target/
 .idea/
 *.iml
+
+# backups and runtime logs
+*.bak-*
+backend/*.log
