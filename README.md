@@ -10,7 +10,7 @@ Both Android and backend Java sources use the unified package namespace `com.par
 
 1. Install Docker Desktop with Compose.
 2. Copy `.env.example` to `.env` and replace all password/secret placeholders. `JWT_SECRET` needs at least 32 random bytes. Set `BOOTSTRAP_ADMIN_EMAIL` and a strong `BOOTSTRAP_ADMIN_PASSWORD` of at least 12 characters for the initial administrator.
-3. Run `dobash /tmp/tap.sh 977 243cker compose up --build` from the repository root.
+3. Run `docker compose up --build` from the repository root.
 4. Open `http://localhost:8080/api/public/health` and the administrator panel at `http://localhost:8080/admin/`.
 5. Remove bootstrap credentials from your environment after the first administrator is created.
 
